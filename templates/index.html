@@ -1,0 +1,130 @@
+<html>
+
+<head>
+    <title>Videobook</title>
+    <style>
+        .container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            max-width: 1200px;
+            text-overflow: ellipsis;
+        }
+
+        #frame {
+            float: left;
+            width: 50%;
+            overflow: hidden;
+            margin: 50px;
+        }
+
+        #frame-inner {
+            position: fixed;
+            height: 100%;
+            overflow: hidden;
+            max-width: 25%;
+        }
+
+        #frame img {
+            display: none;
+        }
+
+        #book {
+            float: left;
+            width: 50%;
+        }
+
+        .sentence:hover {
+            background-color: #f1f1f1;
+            cursor: pointer;
+        }
+
+        .sentence-activated {
+            background-color: #f1f1f1;
+        }
+
+        #youtube-frame {
+            visibility: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div id="frame">
+            <div id="frame-inner"><img src="" alt="frame" id="frame-image">
+            </div>
+        </div>
+        <div id="book">
+            {% for sentence in sentences %}
+            <p class="sentence">{{ sentence }}</p>
+            {% endfor %}
+        </div>
+    </div>
+    <div id="status"></div>
+    <div id="youtube-frame"></div>
+</body>
+<script
+    src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script>
+    var AUDIOBOOK_YOUTUBE_URL = "https://www.youtube.com/watch?v=NSQksenpUmU";
+    var PROMPT_CONTEXT = "ancient rome";
+    var WPM_RATE = 200;
+    var TIMEOUT_ID = null;
+
+    var toEmbedUrl = function (url) {
+        return url.replace("watch?v=", "embed/");
+    }
+    var scrollYouTubeToText = function (text) {
+        console.log("Scrolling to '" + text + "'");
+        var startTime = $.get('/get_youtube_start_time', { p: text, yt: AUDIOBOOK_YOUTUBE_URL }, function (data) {
+            var startTime = parseInt(data['start']);
+            console.log("Got start time: " + startTime);
+            var youtubeFrame = document.getElementById('youtube-frame');
+            youtubeFrame.innerHTML = '<iframe width="560" height="315" src="' + toEmbedUrl(AUDIOBOOK_YOUTUBE_URL) + '?start=' + startTime + '&autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+
+        });
+    };
+    var timeoutId = 0;
+    $(".sentence").click(function () {
+        // If shift was held, also scroll the video to the sentence
+        var clicked = $(this);
+        var sentence = clicked.text();
+        handleSentenceClick(clicked);
+        if (event.shiftKey) {
+            scrollYouTubeToText(sentence);
+        }
+
+
+    });
+
+    var handleSentenceClick = function (clicked) {
+        clearTimeout(TIMEOUT_ID);
+
+        $(".sentence-activated").removeClass("sentence-activated");
+        clicked.addClass("sentence-activated");
+        var sentence = clicked.text();
+        console.log("Requesting image for prompt: '" + sentence + "'");
+        $.get("/image", { prompt: sentence, context: PROMPT_CONTEXT }, function (data) {
+            console.log("Got image: " + data.src);
+            var frame_image = $("#frame-image");
+            frame_image.attr("src", data.src);
+            frame_image.attr("alt", data.alt);
+            frame_image.show();
+        });
+
+        var words = sentence.split(" ").length;
+        var seconds = words / WPM_RATE * 60;
+        var timeout = seconds * 1000;
+        console.log("Reading time:", timeout);
+        TIMEOUT_ID = setTimeout(function () {
+            var nextSentence = clicked.next();
+            handleSentenceClick(nextSentence);
+        }, timeout);
+    };
+
+
+
+</script>
+
+</html>
