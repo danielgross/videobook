@@ -58,7 +58,7 @@ def split_into_sentences(text):
 
 def get_book_sentences():
     """Get the book file, and tokenize it."""
-    text = open('caesar-and-christ.txt').read()
+    text = open('caesar-and-christ.txt', encoding = "utf-8").read()
     sentences = split_into_sentences(text)
     return sentences[5004:10000] # TODO: generalize this
 
